@@ -1,0 +1,19 @@
+#!/bin/bash
+
+if ! [ -n "$1" ]; then
+    echo "USAGE: $0 <source>"
+    exit 1
+fi
+
+FILE="$1"
+
+CFLAGS="-std=c++20 -O2 -march=native"
+CFLAGS="$CFLAGS -Wno-everything -Ilibraries"
+CFLAGS="$CFLAGS -Lbuild/libraries/Core -lcore"
+CFLAGS="$CFLAGS -Lbuild/libraries/Main -lmain"
+CFLAGS="$CFLAGS -Lbuild/libraries/Ty -lty"
+
+set -xe
+
+./build/src/tscpp "$FILE" -o a.cpp
+${CXX:-clang++} $CFLAGS a.cpp -o a.out
