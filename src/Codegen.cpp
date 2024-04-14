@@ -299,6 +299,7 @@ struct Console {
     {
         auto buf = StringBuffer();
         MUST(buffer(buf, args...));
+        Core::File::stdout().writeln(buf.view()).ignore();
     }
 
     Console const* operator->() const { return this; }
