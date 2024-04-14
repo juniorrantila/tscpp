@@ -31,10 +31,6 @@ static ErrorOr<u32> codegen_rvalue_expr(StringBuffer&, Codegen const&, RValue co
 static ErrorOr<u32> codegen_string_literal(StringBuffer&, Codegen const&, Token);
 static ErrorOr<u32> codegen_number_literal(StringBuffer&, Codegen const&, Token);
 
-namespace {
-extern StringView const prelude;
-}
-
 ErrorOr<StringBuffer> codegen(Source source, ParseTree const& tree)
 {
     auto out = TRY(StringBuffer::create());
@@ -48,7 +44,12 @@ ErrorOr<StringBuffer> codegen(Source source, ParseTree const& tree)
 
 static ErrorOr<u32> codegen_prelude(StringBuffer& out, Codegen const&)
 {
-    return TRY(out.write(prelude));
+    return TRY(out.write(R"(
+#include <Main/Main.h>
+#include <JS/Console.h>
+#include <JS/Number.h>
+#include <JS/Boolean.h>
+)"sv));
 }
 
 static ErrorOr<u32> codegen_types(StringBuffer& out, Codegen const&)
@@ -284,93 +285,4 @@ static ErrorOr<u32> codegen_string_literal(StringBuffer& out, Codegen const& gen
 static ErrorOr<u32> codegen_number_literal(StringBuffer&, Codegen const&, Token)
 {
     return Error::unimplemented();
-}
-
-namespace {
-StringView const prelude = R"(
-#include <Main/Main.h>
-#include <Core/File.h>
-
-namespace JS {
-
-struct Console {
-    template <typename... Args>
-    void log(Args... args) const
-    {
-        auto buf = StringBuffer();
-        MUST(buffer(buf, args...));
-        Core::File::stdout().writeln(buf.view()).ignore();
-    }
-
-    Console const* operator->() const { return this; }
-
-private:
-    template <typename... Args>
-        requires (sizeof...(Args) > 1)
-    ErrorOr<usize> buffer(StringBuffer& buf, Args const&... args) const
-    {
-        ErrorOr<usize> results[] = {
-            buffer(buf, args)...
-        };
-        usize size = 0;
-        for (auto& result : results)
-            size += TRY(result);
-        return size;
-    }
-
-    template <typename T>
-    ErrorOr<usize> buffer(StringBuffer& buffer, T const& value) const
-    {
-        if constexpr (requires { value.toString(); }) {
-            auto buf = TRY(value.toString());
-            return TRY(buffer.write(buf.view()));
-        } else {
-            return TRY(buffer.write(value));
-        }
-    }
-} console;
-
-struct number {
-    number(double value)
-        : m_value(value)
-    {
-    }
-
-    number operator+(number other) const
-    {
-        return number(m_value + other.m_value);
-    }
-
-    number operator-(number other) const
-    {
-        return number(m_value + other.m_value);
-    }
-
-    bool operator<=(number other) const
-    {
-        return m_value <= other.m_value;
-    }
-
-    bool operator==(number other) const
-    {
-        return m_value == other.m_value;
-    }
-
-    ErrorOr<StringBuffer> toString() const
-    {
-        return StringBuffer::create_fill(m_value);
-    }
-
-private:
-    double m_value { 0.0 };
-};
-
-using boolean = bool;
-
-}
-
-using JS::console;
-using JS::number;
-using JS::boolean;
-)"sv;
 }
